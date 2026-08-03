@@ -1,0 +1,31 @@
+#gamezer-snapshot-guider-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 2147483646 !important;
+  pointer-events: none !important;
+  background: transparent !important;
+}
+
+#gamezer-snapshot-guider-status {
+  position: fixed !important;
+  top: 12px !important;
+  left: 12px !important;
+  z-index: 2147483647 !important;
+  padding: 7px 10px !important;
+  border-radius: 7px !important;
+  background: rgba(8, 13, 18, 0.88) !important;
+  color: #fff !important;
+  font: 600 12px/1.35 system-ui, sans-serif !important;
+  pointer-events: none !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35) !important;
+}
+
+#gamezer-snapshot-guider-status[data-mode="ready"] {
+  color: #75ff91 !important;
+}
+
+#gamezer-snapshot-guider-status[data-mode="error"] {
+  color: #ff8a80 !important;
+}

@@ -1,0 +1,34 @@
+name: Gamezer Snapshot Guider tests
+
+on:
+  push:
+    branches:
+      - feature/gamezer-ray-guider
+    paths:
+      - "gamezer-ray-guider/**"
+      - ".github/workflows/gamezer-ray-guider-tests.yml"
+  pull_request:
+    paths:
+      - "gamezer-ray-guider/**"
+      - ".github/workflows/gamezer-ray-guider-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          node --check gamezer-ray-guider/physics.js
+          node --check gamezer-ray-guider/service-worker.js
+          node --check gamezer-ray-guider/snapshot-guider.js
+      - name: Validate manifest
+        run: python -m json.tool gamezer-ray-guider/manifest.json >/dev/null
+      - name: Run physics tests
+        run: node gamezer-ray-guider/tests/physics.test.js
