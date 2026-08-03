@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Gamezer Ray Guider",
-  "version": "0.1.0",
-  "description": "A minimal two-line billiards guider for Gamezer. Shift-click the cue ball, then aim normally.",
+  "version": "0.2.0",
+  "description": "Minimal Gamezer guider. Hover the cue ball and press C; no click is required.",
   "minimum_chrome_version": "111",
   "content_scripts": [
     {
@@ -14,13 +14,16 @@
       ],
       "js": [
         "physics.js",
-        "gamezer-guider.js"
+        "gamezer-guider.js",
+        "compatibility.js"
       ],
       "css": [
         "overlay.css"
       ],
       "run_at": "document_start",
       "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
       "world": "MAIN"
     }
   ]
