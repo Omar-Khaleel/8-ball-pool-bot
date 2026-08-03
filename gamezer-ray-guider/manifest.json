@@ -1,9 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Gamezer Ray Guider",
-  "version": "0.2.0",
-  "description": "Minimal Gamezer guider. Hover the cue ball and press C; no click is required.",
+  "name": "Gamezer Snapshot Guider",
+  "version": "0.3.0",
+  "description": "Minimal two-line Gamezer guider using one browser snapshot per layout. Hover the cue ball and press C.",
   "minimum_chrome_version": "111",
+  "permissions": [
+    "activeTab"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_title": "Arm Gamezer Snapshot Guider"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -14,8 +23,7 @@
       ],
       "js": [
         "physics.js",
-        "gamezer-guider.js",
-        "compatibility.js"
+        "snapshot-guider.js"
       ],
       "css": [
         "overlay.css"
@@ -23,8 +31,7 @@
       "run_at": "document_start",
       "all_frames": true,
       "match_about_blank": true,
-      "match_origin_as_fallback": true,
-      "world": "MAIN"
+      "match_origin_as_fallback": true
     }
   ]
 }
