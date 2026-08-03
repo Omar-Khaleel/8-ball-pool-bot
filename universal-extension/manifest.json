@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Universal Pool Vision Assistant",
+  "version": "1.0.0",
+  "description": "Calibrated computer-vision overlay for browser billiards: ball detection, motion tracking, pockets and practice shot paths.",
+  "minimum_chrome_version": "109",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_title": "Pool Vision",
+    "default_popup": "popup.html"
+  }
+}
