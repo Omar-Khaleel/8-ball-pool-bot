@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pool Vision</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="logo">PV</div>
+        <div>
+          <h1>Pool Vision</h1>
+          <p>مساعد بصري للبلياردو داخل المتصفح</p>
+        </div>
+      </header>
+
+      <section class="actions">
+        <button id="start" class="primary">تشغيل التحليل</button>
+        <button id="calibrate">معايرة الطاولة</button>
+        <button id="stop" class="danger">إيقاف</button>
+      </section>
+
+      <section class="settings">
+        <label>
+          <span>المسارات المقترحة</span>
+          <input id="showPredictions" type="checkbox" checked />
+        </label>
+        <label>
+          <span>مسارات الارتداد</span>
+          <input id="showBankShots" type="checkbox" checked />
+        </label>
+        <label>
+          <span>متجهات الحركة</span>
+          <input id="showVelocity" type="checkbox" checked />
+        </label>
+        <label class="range-row">
+          <span>حساسية فصل الكرة</span>
+          <output id="thresholdValue">53</output>
+          <input id="colorThreshold" type="range" min="35" max="90" value="53" />
+        </label>
+        <label class="range-row">
+          <span>سرعة الالتقاط</span>
+          <output id="intervalValue">180 ms</output>
+          <input id="intervalMs" type="range" min="120" max="700" step="20" value="180" />
+        </label>
+      </section>
+
+      <section id="status" class="status">افتح لعبة بلياردو ثم اضغط «معايرة الطاولة».</section>
+      <footer>لا ينفّذ النقر أو الضرب تلقائيًا.</footer>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
