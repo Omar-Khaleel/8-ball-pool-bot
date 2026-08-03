@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Universal Pool Vision Assistant",
-  "version": "1.0.0",
-  "description": "Calibrated computer-vision overlay for browser billiards: ball detection, motion tracking, pockets and practice shot paths.",
+  "version": "1.1.0",
+  "description": "Browser billiards vision guide with cue-stick-assisted cue-ball detection, ghost-ball aiming and exact contact markers.",
   "minimum_chrome_version": "109",
   "permissions": [
     "activeTab",
