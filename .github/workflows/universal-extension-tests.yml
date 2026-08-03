@@ -1,0 +1,39 @@
+name: Universal extension tests
+
+on:
+  push:
+    branches:
+      - master
+      - feature/**
+    paths:
+      - "universal-extension/**"
+      - ".github/workflows/universal-extension-tests.yml"
+  pull_request:
+    paths:
+      - "universal-extension/**"
+      - ".github/workflows/universal-extension-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          for file in universal-extension/*.js universal-extension/tests/*.js; do
+            node --check "$file"
+          done
+      - name: Run base vision tests
+        run: node universal-extension/tests/run-tests.js
+      - name: Run cue detection tests
+        run: node universal-extension/tests/precision-tests.js
+      - name: Run simple guider tests
+        run: node universal-extension/tests/simple-core-tests.js

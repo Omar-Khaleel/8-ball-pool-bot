@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Pool Simple Guider",
+  "version": "1.2.0",
+  "description": "A minimal billiards guider that follows the cue direction, shows the first collision, and predicts the target ball destination.",
+  "minimum_chrome_version": "109",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_title": "تشغيل أو إيقاف Pool Simple Guider"
+  }
+}
