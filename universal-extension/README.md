@@ -12,6 +12,7 @@ A Manifest V3 browser extension that turns the original proof of concept into a 
 - Locates six pocket regions near calibrated table anchors.
 - Calculates collision-safe direct shots and limited one-cushion bank candidates.
 - Renders an on-page overlay with detections, motion arrows, ghost-ball contact points, and ranked paths.
+- Hides its own overlay before each screenshot so rendered guides do not feed back into detection.
 - Stores calibration and settings per website origin.
 
 It intentionally does **not** click, drag, inject game inputs, bypass anti-cheat systems, or automate a shot.
@@ -44,7 +45,9 @@ If too many false balls appear, increase **ball separation sensitivity**. If rea
 
 This design is generic for browser-rendered games because it analyzes a screenshot of the visible tab. It cannot see content hidden behind another tab or window, and it cannot guarantee perfect detection for every skin, camera angle, animation, occlusion, particle effect, or non-rectangular table.
 
-Perspective-heavy 3D games need a future homography/perspective-calibration module. Current geometry assumes a mostly top-down rectangular playfield.
+Chrome limits `captureVisibleTab` to two calls per second, so the extension enforces a minimum 520 ms capture interval. Motion arrows therefore show coarse inter-frame movement rather than high-speed physical reconstruction.
+
+Perspective-heavy 3D games need a future homography/perspective-calibration module. Current geometry assumes a mostly top-down rectangular playfield. Spin, cloth friction, rail elasticity, cue elevation, and game-specific physics are not inferred by this first release.
 
 ## Development
 
@@ -58,7 +61,8 @@ node universal-extension/tests/run-tests.js
 
 Key files:
 
-- `service-worker.js`: active-tab injection and screenshot capture.
+- `service-worker.js`: active-tab injection, capture throttling, and screenshot capture.
+- `capture-guard.js`: hides and restores the overlay around each screenshot.
 - `content.js`: calibration, capture loop, overlay, and orchestration.
 - `vision.js`: felt estimation, segmentation, component detection, classification, pockets, and tracking.
 - `geometry.js`: line clearance, ghost-ball geometry, direct shots, and bank-shot candidates.
