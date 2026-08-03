@@ -105,6 +105,14 @@
 
         const objectDirection = normalize(objectToPocket);
         const ghost = sub(objectBall, scale(objectDirection, radius * 2.02));
+        if (
+          ghost.x < radius ||
+          ghost.x > (input.width || Number.POSITIVE_INFINITY) - radius ||
+          ghost.y < radius ||
+          ghost.y > (input.height || Number.POSITIVE_INFINITY) - radius
+        ) {
+          continue;
+        }
         const cueToGhost = sub(ghost, cue);
         const cueDistance = length(cueToGhost);
         if (cueDistance < radius * 1.5) continue;
@@ -227,6 +235,7 @@
           const outgoing = normalize(sub(pocket, bankPoint));
           const incoming = normalize(sub(bankPoint, objectBall));
           const ghost = sub(objectBall, scale(incoming, radius * 2.02));
+          if (ghost.x < radius || ghost.x > width - radius || ghost.y < radius || ghost.y > height - radius) continue;
           const cueApproach = normalize(sub(ghost, cue));
           if (dot(cueApproach, incoming) < 0.16) continue;
 
