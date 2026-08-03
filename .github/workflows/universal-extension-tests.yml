@@ -31,5 +31,7 @@ jobs:
           for file in universal-extension/*.js universal-extension/tests/*.js; do
             node --check "$file"
           done
-      - name: Run Pool Vision tests
+      - name: Run base Pool Vision tests
         run: node universal-extension/tests/run-tests.js
+      - name: Run cue and precision guide tests
+        run: node universal-extension/tests/precision-tests.js
