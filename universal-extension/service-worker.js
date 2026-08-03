@@ -1,62 +1,25 @@
 'use strict';
 
-const MIN_CAPTURE_GAP_MS = 520;
-let lastCaptureAt = 0;
-let captureQueue = Promise.resolve();
+const SCRIPT_FILES = [
+  'geometry.js',
+  'vision.js',
+  'precision-vision.js',
+  'simple-core.js',
+  'simple-guider.js',
+];
 
-function sleep(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-async function getActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) throw new Error('No active browser tab was found');
-  if (!/^https?:/i.test(tab.url || '')) {
-    throw new Error('Pool Vision only runs on normal http/https pages');
-  }
-  return tab;
-}
-
-async function getInjectionState(tabId) {
-  try {
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: () => ({
-        assistant: Boolean(globalThis.__POOL_VISION_ASSISTANT__),
-        captureGuard: Boolean(globalThis.__POOL_VISION_CAPTURE_GUARD__),
-      }),
-    });
-    return result?.result || { assistant: false, captureGuard: false };
-  } catch (_error) {
-    return { assistant: false, captureGuard: false };
-  }
-}
-
-async function isSecurityVerificationPage(tabId) {
+async function isChallengePage(tabId) {
   try {
     const [result] = await chrome.scripting.executeScript({
       target: { tabId },
       func: () => {
-        const title = String(document.title || '').toLowerCase();
-        const text = String(document.body?.innerText || '').slice(0, 120000).toLowerCase();
-        const combined = `${title}\n${text}`;
-        const phrases = [
-          'performing security verification',
-          'checking your browser',
-          'verify you are human',
-          'verifying you are human',
-          'security verification',
-          'just a moment',
-          'ray id',
-          'cloudflare',
-        ];
-        const phraseMatch = phrases.some((phrase) => combined.includes(phrase));
-        const challengeResource = Boolean(
-          document.querySelector(
-            'script[src*="/cdn-cgi/challenge-platform/"], iframe[src*="challenges.cloudflare.com"], input[name="cf-turnstile-response"], .cf-turnstile'
-          )
+        const text = `${document.title || ''}\n${document.body?.innerText || ''}`.toLowerCase();
+        return (
+          text.includes('performing security verification') ||
+          text.includes('checking your browser') ||
+          text.includes('verify you are human') ||
+          Boolean(document.querySelector('.cf-turnstile, iframe[src*="challenges.cloudflare.com"]'))
         );
-        return phraseMatch && (challengeResource || combined.includes('cloudflare'));
       },
     });
     return Boolean(result?.result);
@@ -65,156 +28,69 @@ async function isSecurityVerificationPage(tabId) {
   }
 }
 
-async function assertSafePage(tabId) {
-  if (await isSecurityVerificationPage(tabId)) {
-    throw new Error(
-      'أكمل تحقق Cloudflare أولًا ثم افتح Pool Vision. تم إيقاف الحقن والتقاط الشاشة على صفحة التحقق.'
-    );
+async function executeAllFrames(tabId, details) {
+  try {
+    return await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, ...details });
+  } catch (_error) {
+    return chrome.scripting.executeScript({ target: { tabId }, ...details });
   }
 }
 
-async function ensureInjected(tabId) {
-  await assertSafePage(tabId);
-  const injectionState = await getInjectionState(tabId);
-
-  if (!injectionState.assistant) {
+async function insertCssAllFrames(tabId) {
+  try {
     await chrome.scripting.insertCSS({
-      target: { tabId },
-      files: ['styles.css'],
+      target: { tabId, allFrames: true },
+      files: ['simple-guider.css'],
     });
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: [
-        'geometry.js',
-        'vision.js',
-        'precision-vision.js',
-        'precision-geometry.js',
-        'content.js',
-        'precision-overlay.js',
-      ],
-    });
-  }
-
-  if (!injectionState.captureGuard) {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['capture-guard.js'],
-    });
+  } catch (_error) {
+    await chrome.scripting.insertCSS({ target: { tabId }, files: ['simple-guider.css'] });
   }
 }
 
-function emptyStatus() {
-  return {
-    ok: true,
-    status: {
-      running: false,
-      calibrating: false,
-      hasRoi: false,
-      balls: 0,
-      moving: 0,
-      shots: 0,
-      error: null,
-      settings: null,
-    },
-  };
-}
-
-function sendCommand(tabId, command, settings) {
-  return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(
-      tabId,
-      { type: 'POOL_VISION_COMMAND', command, settings },
-      (response) => {
-        const error = chrome.runtime.lastError;
-        if (error) {
-          reject(new Error(error.message));
-          return;
-        }
-        if (!response?.ok) {
-          reject(new Error(response?.error || 'The page did not accept the command'));
-          return;
-        }
-        resolve(response);
-      }
-    );
-  });
-}
-
-function sendTabSignal(tabId, type) {
-  return new Promise((resolve) => {
-    chrome.tabs.sendMessage(tabId, { type }, (response) => {
-      const error = chrome.runtime.lastError;
-      if (error) {
-        resolve(false);
-        return;
-      }
-      resolve(Boolean(response?.ok));
+async function guiderIsRunning(tabId) {
+  try {
+    const results = await executeAllFrames(tabId, {
+      func: () => Boolean(globalThis.__POOL_SIMPLE_GUIDER__?.status?.().running),
     });
-  });
+    return results.some((result) => Boolean(result.result));
+  } catch (_error) {
+    return false;
+  }
 }
 
-function captureVisibleTab(windowId, tabId) {
-  captureQueue = captureQueue
-    .catch(() => {})
-    .then(async () => {
-      await assertSafePage(tabId);
-      const waitMs = Math.max(0, MIN_CAPTURE_GAP_MS - (Date.now() - lastCaptureAt));
-      if (waitMs) await sleep(waitMs);
+async function startGuider(tab) {
+  if (!tab?.id || !/^https?:/i.test(tab.url || '')) return;
+  if (await isChallengePage(tab.id)) {
+    await chrome.action.setBadgeText({ tabId: tab.id, text: 'WAIT' });
+    await chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: '#b7791f' });
+    return;
+  }
 
-      await sendTabSignal(tabId, 'POOL_VISION_PRE_CAPTURE');
-      try {
-        const dataUrl = await new Promise((resolve, reject) => {
-          chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 84 }, (captured) => {
-            const error = chrome.runtime.lastError;
-            if (error) {
-              reject(new Error(error.message));
-              return;
-            }
-            resolve(captured);
-          });
-        });
-        lastCaptureAt = Date.now();
-        return dataUrl;
-      } finally {
-        await sendTabSignal(tabId, 'POOL_VISION_POST_CAPTURE');
-      }
-    });
-  return captureQueue;
+  await insertCssAllFrames(tab.id);
+  await executeAllFrames(tab.id, { files: SCRIPT_FILES });
+  await executeAllFrames(tab.id, { func: () => globalThis.__POOL_SIMPLE_GUIDER__?.start?.() });
+  await chrome.action.setBadgeText({ tabId: tab.id, text: 'ON' });
+  await chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: '#16803c' });
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === 'POOL_VISION_CAPTURE') {
-    const windowId = sender.tab?.windowId;
-    const tabId = sender.tab?.id;
-    if (windowId == null || tabId == null) {
-      sendResponse({ ok: false, error: 'Capture request did not come from a browser tab' });
-      return false;
+async function stopGuider(tabId) {
+  await executeAllFrames(tabId, { func: () => globalThis.__POOL_SIMPLE_GUIDER__?.stop?.() });
+  await chrome.action.setBadgeText({ tabId, text: '' });
+}
+
+chrome.action.onClicked.addListener(async (tab) => {
+  try {
+    if (await guiderIsRunning(tab.id)) await stopGuider(tab.id);
+    else await startGuider(tab);
+  } catch (error) {
+    console.error('Pool Simple Guider:', error);
+    if (tab?.id) {
+      await chrome.action.setBadgeText({ tabId: tab.id, text: 'ERR' });
+      await chrome.action.setBadgeBackgroundColor({ tabId: tab.id, color: '#b42318' });
     }
-
-    captureVisibleTab(windowId, tabId)
-      .then((dataUrl) => sendResponse({ ok: true, dataUrl }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
   }
+});
 
-  if (message?.type === 'POOL_VISION_POPUP_COMMAND') {
-    (async () => {
-      const tab = await getActiveTab();
-      await assertSafePage(tab.id);
-      const injectionState = await getInjectionState(tab.id);
-
-      if ((message.command === 'status' || message.command === 'stop') && !injectionState.assistant) {
-        return { ...emptyStatus(), tabId: tab.id };
-      }
-
-      await ensureInjected(tab.id);
-      const response = await sendCommand(tab.id, message.command, message.settings);
-      return { ...response, tabId: tab.id };
-    })()
-      .then(sendResponse)
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
-
-  return false;
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'loading') chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
 });
