@@ -1,5 +1,7 @@
 'use strict';
 
+const MIN_CAPTURE_INTERVAL_MS = 520;
+
 const elements = {
   start: document.querySelector('#start'),
   calibrate: document.querySelector('#calibrate'),
@@ -25,7 +27,7 @@ function currentSettings() {
     showBankShots: elements.showBankShots.checked,
     showVelocity: elements.showVelocity.checked,
     colorThreshold: Number(elements.colorThreshold.value),
-    intervalMs: Number(elements.intervalMs.value),
+    intervalMs: Math.max(MIN_CAPTURE_INTERVAL_MS, Number(elements.intervalMs.value)),
   };
 }
 
@@ -36,7 +38,7 @@ function renderStatus(status) {
     elements.showBankShots.checked = status.settings.showBankShots !== false;
     elements.showVelocity.checked = status.settings.showVelocity !== false;
     elements.colorThreshold.value = String(status.settings.colorThreshold || 53);
-    elements.intervalMs.value = String(status.settings.intervalMs || 180);
+    elements.intervalMs.value = String(Math.max(MIN_CAPTURE_INTERVAL_MS, status.settings.intervalMs || MIN_CAPTURE_INTERVAL_MS));
     updateLabels();
   }
   if (status.error) {
