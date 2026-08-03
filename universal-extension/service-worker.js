@@ -1,5 +1,13 @@
 'use strict';
 
+const MIN_CAPTURE_GAP_MS = 520;
+let lastCaptureAt = 0;
+let captureQueue = Promise.resolve();
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) throw new Error('No active browser tab was found');
@@ -54,6 +62,29 @@ function sendCommand(tabId, command, settings) {
   });
 }
 
+function captureVisibleTab(windowId) {
+  captureQueue = captureQueue
+    .catch(() => {})
+    .then(async () => {
+      const waitMs = Math.max(0, MIN_CAPTURE_GAP_MS - (Date.now() - lastCaptureAt));
+      if (waitMs) await sleep(waitMs);
+
+      const dataUrl = await new Promise((resolve, reject) => {
+        chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 84 }, (captured) => {
+          const error = chrome.runtime.lastError;
+          if (error) {
+            reject(new Error(error.message));
+            return;
+          }
+          resolve(captured);
+        });
+      });
+      lastCaptureAt = Date.now();
+      return dataUrl;
+    });
+  return captureQueue;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'POOL_VISION_CAPTURE') {
     const windowId = sender.tab?.windowId;
@@ -62,14 +93,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return false;
     }
 
-    chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 84 }, (dataUrl) => {
-      const error = chrome.runtime.lastError;
-      if (error) {
-        sendResponse({ ok: false, error: error.message });
-        return;
-      }
-      sendResponse({ ok: true, dataUrl });
-    });
+    captureVisibleTab(windowId)
+      .then((dataUrl) => sendResponse({ ok: true, dataUrl }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
   }
 
