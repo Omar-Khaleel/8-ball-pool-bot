@@ -84,7 +84,14 @@ async function ensureInjected(tabId) {
     });
     await chrome.scripting.executeScript({
       target: { tabId },
-      files: ['geometry.js', 'vision.js', 'content.js'],
+      files: [
+        'geometry.js',
+        'vision.js',
+        'precision-vision.js',
+        'precision-geometry.js',
+        'content.js',
+        'precision-overlay.js',
+      ],
     });
   }
 
