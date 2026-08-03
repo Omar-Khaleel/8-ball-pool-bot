@@ -1,4 +1,4 @@
-name: Gamezer Ray Guider tests
+name: Gamezer Snapshot Guider tests
 
 on:
   push:
@@ -26,7 +26,8 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check gamezer-ray-guider/physics.js
-          node --check gamezer-ray-guider/gamezer-guider.js
+          node --check gamezer-ray-guider/service-worker.js
+          node --check gamezer-ray-guider/snapshot-guider.js
       - name: Validate manifest
         run: python -m json.tool gamezer-ray-guider/manifest.json >/dev/null
       - name: Run physics tests
