@@ -1,29 +1,26 @@
-# Gamezer Ray Guider
+# Gamezer Ray Guider v0.2
 
-A deliberately small Gamezer-only billiards guide.
-
-It does not capture the browser tab, does not flash the page, does not enumerate every possible shot, and does not automate input. It reads the game canvas directly and draws only:
-
-- a white line showing the current cue-ball path to the first collision;
-- a green/yellow line showing where the contacted ball is expected to travel.
+A small Gamezer-only billiards guide. It reads the game canvas directly and draws only the cue path and the contacted ball direction.
 
 ## Install
 
 1. Open `chrome://extensions` or `edge://extensions`.
 2. Enable Developer mode.
 3. Choose **Load unpacked** and select this directory.
-4. Open or reload Gamezer.
-5. Hold **Shift** and left-click the center of the white cue ball once.
-6. Aim normally with the mouse.
+4. Close all existing Gamezer tabs and open a new Gamezer tab.
+5. Wait for the table to load.
+6. Put the mouse cursor over the center of the white cue ball and press **C**. Do not click.
+7. Move the mouse normally to aim.
 
 ## Keys
 
+- `C`: select the white cue ball under the cursor without clicking it.
 - `G`: hide/show the guide.
-- `R`: reverse the aim direction if the game maps the mouse to the opposite side of the cue.
-- `Esc`: forget the selected cue ball; Shift-click it again.
+- `R`: reverse the aim direction.
+- `Esc`: clear the cue selection.
 
-## Design
+A small temporary status label reports whether the extension found and could read the game canvas. It disappears after a successful cue selection.
 
-The script runs at `document_start` in the page's MAIN world and requests `preserveDrawingBuffer` for WebGL contexts. It reads the largest visible game canvas directly with `readPixels`, estimates the cloth region from the color around the selected cue ball, scans only the current aim ray for the first ball, and applies equal-ball collision geometry.
+## Capture modes
 
-No screenshots or network requests are used.
+The extension first tries WebGL `readPixels`. If Gamezer renders through an existing or worker-owned canvas, it falls back to copying the visible canvas bitmap into a local analysis canvas. It never captures the browser tab and does not hide the page between frames.
