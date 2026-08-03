@@ -32,7 +32,49 @@ async function getInjectionState(tabId) {
   }
 }
 
+async function isSecurityVerificationPage(tabId) {
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const title = String(document.title || '').toLowerCase();
+        const text = String(document.body?.innerText || '').slice(0, 120000).toLowerCase();
+        const combined = `${title}\n${text}`;
+        const phrases = [
+          'performing security verification',
+          'checking your browser',
+          'verify you are human',
+          'verifying you are human',
+          'security verification',
+          'just a moment',
+          'ray id',
+          'cloudflare',
+        ];
+        const phraseMatch = phrases.some((phrase) => combined.includes(phrase));
+        const challengeResource = Boolean(
+          document.querySelector(
+            'script[src*="/cdn-cgi/challenge-platform/"], iframe[src*="challenges.cloudflare.com"], input[name="cf-turnstile-response"], .cf-turnstile'
+          )
+        );
+        return phraseMatch && (challengeResource || combined.includes('cloudflare'));
+      },
+    });
+    return Boolean(result?.result);
+  } catch (_error) {
+    return false;
+  }
+}
+
+async function assertSafePage(tabId) {
+  if (await isSecurityVerificationPage(tabId)) {
+    throw new Error(
+      'أكمل تحقق Cloudflare أولًا ثم افتح Pool Vision. تم إيقاف الحقن والتقاط الشاشة على صفحة التحقق.'
+    );
+  }
+}
+
 async function ensureInjected(tabId) {
+  await assertSafePage(tabId);
   const injectionState = await getInjectionState(tabId);
 
   if (!injectionState.assistant) {
@@ -52,6 +94,22 @@ async function ensureInjected(tabId) {
       files: ['capture-guard.js'],
     });
   }
+}
+
+function emptyStatus() {
+  return {
+    ok: true,
+    status: {
+      running: false,
+      calibrating: false,
+      hasRoi: false,
+      balls: 0,
+      moving: 0,
+      shots: 0,
+      error: null,
+      settings: null,
+    },
+  };
 }
 
 function sendCommand(tabId, command, settings) {
@@ -92,6 +150,7 @@ function captureVisibleTab(windowId, tabId) {
   captureQueue = captureQueue
     .catch(() => {})
     .then(async () => {
+      await assertSafePage(tabId);
       const waitMs = Math.max(0, MIN_CAPTURE_GAP_MS - (Date.now() - lastCaptureAt));
       if (waitMs) await sleep(waitMs);
 
@@ -134,6 +193,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'POOL_VISION_POPUP_COMMAND') {
     (async () => {
       const tab = await getActiveTab();
+      await assertSafePage(tab.id);
+      const injectionState = await getInjectionState(tab.id);
+
+      if ((message.command === 'status' || message.command === 'stop') && !injectionState.assistant) {
+        return { ...emptyStatus(), tabId: tab.id };
+      }
+
       await ensureInjected(tab.id);
       const response = await sendCommand(tab.id, message.command, message.settings);
       return { ...response, tabId: tab.id };
